@@ -34,5 +34,12 @@ build/
 ### VS Code ###
 .vscode/
 
+# 屏蔽敏感的本地配置文件
+src/main/resources/application.yml
+
+# 屏蔽日志文件
+logs/
+*.log
+
 ### Mac OS ###
 .DS_Store

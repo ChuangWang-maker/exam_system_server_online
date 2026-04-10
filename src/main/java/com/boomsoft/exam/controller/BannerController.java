@@ -1,11 +1,15 @@
 package com.boomsoft.exam.controller;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.boomsoft.exam.common.Result;
 import com.boomsoft.exam.entity.Banner;
+import com.boomsoft.exam.mapper.BannerMapper;
+import com.boomsoft.exam.service.BannerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,11 +21,29 @@ import java.util.Map;
  * 轮播图控制器 - 处理轮播图管理相关的HTTP请求
  * 包括图片上传、轮播图的CRUD操作、状态切换等功能
  */
+@Slf4j
 @RestController  // REST控制器，返回JSON数据
 @RequestMapping("/api/banners")  // 轮播图API路径前缀
 @CrossOrigin  // 允许跨域访问
 @Tag(name = "轮播图管理", description = "轮播图相关操作，包括图片上传、轮播图增删改查、状态管理等功能")  // Swagger API分组
 public class BannerController {
+    @Autowired
+    private BannerService bannerService;
+
+    /**
+     * 获取所有轮播图（管理后台使用）
+     * @return 轮播图列表
+     */
+    @GetMapping("/list")  // 处理GET请求
+    @Operation(summary = "获取所有轮播图", description = "获取所有轮播图列表，包括启用和禁用的，供管理后台使用")  // API描述
+    public Result<List<Banner>> getAllBanners() {
+        LambdaQueryWrapper<Banner> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.orderByAsc(Banner::getSortOrder);
+        List<Banner> banners = bannerService.list(queryWrapper);
+        Result<List<Banner>> result = Result.success(banners);
+        log.info("获取轮播图数量为:{}，具体数值是:{}", banners.size(), banners);
+        return result;
+    }
 
     
     /**
@@ -48,15 +70,7 @@ public class BannerController {
         return Result.success(null);
     }
     
-    /**
-     * 获取所有轮播图（管理后台使用）
-     * @return 轮播图列表
-     */
-    @GetMapping("/list")  // 处理GET请求
-    @Operation(summary = "获取所有轮播图", description = "获取所有轮播图列表，包括启用和禁用的，供管理后台使用")  // API描述
-    public Result<List<Banner>> getAllBanners() {
-        return Result.success(null);
-    }
+
     
     /**
      * 根据ID获取轮播图
