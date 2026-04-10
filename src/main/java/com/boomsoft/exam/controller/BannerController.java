@@ -2,6 +2,7 @@ package com.boomsoft.exam.controller;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.boomsoft.exam.common.Result;
 import com.boomsoft.exam.entity.Banner;
 import com.boomsoft.exam.mapper.BannerMapper;
@@ -59,6 +60,25 @@ public class BannerController {
         Result<List<Banner>> result = Result.success(banners);
         log.info("获取轮播图数量为:{}，具体数值是:{}", banners.size(), banners);
         return result;
+    }
+
+    /**
+     * 启用/禁用轮播图
+     * @param id 轮播图ID
+     * @param isActive 是否启用
+     * @return 操作结果
+     */
+    @PutMapping("/toggle/{id}")  // 处理PUT请求
+    @Operation(summary = "切换轮播图状态", description = "启用或禁用指定的轮播图，禁用后不会在前台显示")  // API描述
+    public Result<String> toggleBannerStatus(
+            @Parameter(description = "轮播图ID") @PathVariable Long id,
+            @Parameter(description = "是否启用，true为启用，false为禁用") @RequestParam Boolean isActive) {
+        LambdaUpdateWrapper<Banner> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Banner::getId, id)
+                .set(Banner::getIsActive, isActive);
+        bannerService.update(updateWrapper);
+        log.info("id={}轮播图状态切换成功!修改后的状态为:{}", id, isActive);
+        return Result.success("轮播图状态切换成功");
     }
 
     
@@ -122,17 +142,7 @@ public class BannerController {
         return null;
     }
     
-    /**
-     * 启用/禁用轮播图
-     * @param id 轮播图ID
-     * @param isActive 是否启用
-     * @return 操作结果
-     */
-    @PutMapping("/toggle/{id}")  // 处理PUT请求
-    @Operation(summary = "切换轮播图状态", description = "启用或禁用指定的轮播图，禁用后不会在前台显示")  // API描述
-    public Result<String> toggleBannerStatus(
-            @Parameter(description = "轮播图ID") @PathVariable Long id, 
-            @Parameter(description = "是否启用，true为启用，false为禁用") @RequestParam Boolean isActive) {
-        return null;
-    }
+
+
+
 } 
