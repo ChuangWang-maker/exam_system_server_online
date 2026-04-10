@@ -45,6 +45,22 @@ public class BannerController {
         return result;
     }
 
+    /**
+     * 获取启用的轮播图（前台首页使用）
+     * @return 轮播图列表
+     */
+    @GetMapping("/active")  // 处理GET请求
+    @Operation(summary = "获取启用的轮播图", description = "获取状态为启用的轮播图列表，供前台首页展示使用")  // API描述
+    public Result<List<Banner>> getActiveBanners() {
+        LambdaQueryWrapper<Banner> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Banner::getIsActive, true);
+        queryWrapper.orderByAsc(Banner::getSortOrder);
+        List<Banner> banners = bannerService.list(queryWrapper);
+        Result<List<Banner>> result = Result.success(banners);
+        log.info("获取轮播图数量为:{}，具体数值是:{}", banners.size(), banners);
+        return result;
+    }
+
     
     /**
      * 上传轮播图图片
@@ -59,17 +75,6 @@ public class BannerController {
 
         return Result.success("上传图片地址", "图片上传成功");
     }
-    
-    /**
-     * 获取启用的轮播图（前台首页使用）
-     * @return 轮播图列表
-     */
-    @GetMapping("/active")  // 处理GET请求
-    @Operation(summary = "获取启用的轮播图", description = "获取状态为启用的轮播图列表，供前台首页展示使用")  // API描述
-    public Result<List<Banner>> getActiveBanners() {
-        return Result.success(null);
-    }
-    
 
     
     /**
