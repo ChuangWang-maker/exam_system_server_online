@@ -98,6 +98,24 @@ public class BannerController {
         }
     }
 
+    /**
+     * 根据ID获取轮播图
+     * @param id 轮播图ID
+     * @return 轮播图详情
+     */
+    @GetMapping("/{id}")  // 处理GET请求
+    @Operation(summary = "根据ID获取轮播图", description = "根据轮播图ID获取单个轮播图的详细信息")  // API描述
+    public Result<Banner> getBannerById(@Parameter(description = "轮播图ID") @PathVariable Long id) {
+        // 1. 直接调用业务层根据id查询方法
+        Banner banner = bannerService.getById(id);
+        // 2. 健壮性判断：如果查不到数据（ID不存在或已被逻辑删除）
+        if (banner == null) {
+            return Result.error("查询失败，该轮播图不存在或已被移除");
+        }
+        // 3. 拼接并返回结果 [cite: 18]
+        return Result.success(banner, "获取详情成功");
+    }
+
     
     /**
      * 上传轮播图图片
@@ -114,17 +132,7 @@ public class BannerController {
     }
 
     
-    /**
-     * 根据ID获取轮播图
-     * @param id 轮播图ID
-     * @return 轮播图详情
-     */
-    @GetMapping("/{id}")  // 处理GET请求
-    @Operation(summary = "根据ID获取轮播图", description = "根据轮播图ID获取单个轮播图的详细信息")  // API描述  
-    public Result<Banner> getBannerById(@Parameter(description = "轮播图ID") @PathVariable Long id) {
 
-      return Result.error("轮播图不存在");
-    }
     
     /**
      * 添加轮播图
@@ -147,10 +155,6 @@ public class BannerController {
     public Result<String> updateBanner(@RequestBody Banner banner) {
         return null;
     }
-    
-
-    
-
 
 
 } 
