@@ -81,6 +81,23 @@ public class BannerController {
         return Result.success("轮播图状态切换成功");
     }
 
+    /**
+     * 删除轮播图
+     * @param id 轮播图ID
+     * @return 操作结果
+     */
+    @DeleteMapping("/delete/{id}")  // 处理DELETE请求
+    @Operation(summary = "删除轮播图", description = "根据ID删除指定的轮播图")  // API描述
+    public Result<String> deleteBanner(@Parameter(description = "轮播图ID") @PathVariable Long id) {
+        boolean success = bannerService.removeById(id);
+        if (success) {
+            return Result.success("删除数据成功");
+        } else {
+            // 如果数据已经被删过，或者 ID 不存在，会返回 false
+            return Result.error("删除失败，该轮播图可能已被移除或不存在");
+        }
+    }
+
     
     /**
      * 上传轮播图图片
@@ -131,16 +148,7 @@ public class BannerController {
         return null;
     }
     
-    /**
-     * 删除轮播图
-     * @param id 轮播图ID
-     * @return 操作结果
-     */
-    @DeleteMapping("/delete/{id}")  // 处理DELETE请求
-    @Operation(summary = "删除轮播图", description = "根据ID删除指定的轮播图")  // API描述
-    public Result<String> deleteBanner(@Parameter(description = "轮播图ID") @PathVariable Long id) {
-        return null;
-    }
+
     
 
 
