@@ -7,6 +7,7 @@ import com.boomsoft.exam.common.Result;
 import com.boomsoft.exam.entity.Banner;
 import com.boomsoft.exam.mapper.BannerMapper;
 import com.boomsoft.exam.service.BannerService;
+import io.minio.errors.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,6 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 
@@ -126,9 +130,10 @@ public class BannerController {
     @Operation(summary = "上传轮播图图片", description = "将图片文件上传到MinIO服务器，返回可访问的图片URL")  // API描述
     public Result<String> uploadBannerImage(
             @Parameter(description = "要上传的图片文件，支持jpg、png、gif等格式，大小限制5MB") 
-            @RequestParam("file") MultipartFile file) {
-
-        return Result.success("上传图片地址", "图片上传成功");
+            @RequestParam("file") MultipartFile file) throws ServerException, InsufficientDataException, ErrorResponseException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidResponseException, XmlParserException, InternalException {
+        String imageUrl = bannerService.uploadBannerImage(file);
+        log.info("图片上传成功，图片访问URL为:{}", imageUrl);
+        return Result.success(imageUrl,"图片上传成功");
     }
 
     
@@ -142,7 +147,9 @@ public class BannerController {
     @PostMapping("/add")  // 处理POST请求
     @Operation(summary = "添加轮播图", description = "创建新的轮播图，需要提供图片URL、标题、跳转链接等信息")  // API描述
     public Result<String> addBanner(@RequestBody Banner banner) {
-        return null;
+        bannerService.save(banner);
+        log.info("保存轮播图数据成功！保存的id为：{}",banner.getId());
+        return Result.success(null);
     }
     
     /**
@@ -153,7 +160,9 @@ public class BannerController {
     @PutMapping("/update")  // 处理PUT请求
     @Operation(summary = "更新轮播图", description = "更新轮播图的信息，包括图片、标题、跳转链接、排序等")  // API描述
     public Result<String> updateBanner(@RequestBody Banner banner) {
-        return null;
+        bannerService.updateById(banner);
+        log.info("更新轮播图数据成功！保存的id为：{}",banner.getId());
+        return Result.success(null);
     }
 
 

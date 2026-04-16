@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
@@ -26,3 +30,8 @@ mybatis-plus:
   global-config:
     db-config:
       logic-delete-field: isDeleted
+minio:
+  endpoint: http://192.168.100.128:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: onlinebucket
