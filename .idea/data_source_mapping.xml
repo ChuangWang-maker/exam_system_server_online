@@ -2,5 +2,6 @@
 <project version="4">
   <component name="DataSourcePerFileMappings">
     <file url="file://$PROJECT_DIR$/src/main/java/com/boomsoft/exam/mapper/NoticeMapper.java" value="eca6165a-e5fe-4dac-b8ac-07573af89ae0" />
+    <file url="file://$PROJECT_DIR$/src/main/java/com/boomsoft/exam/mapper/QuestionMapper.java" value="eca6165a-e5fe-4dac-b8ac-07573af89ae0" />
   </component>
 </project>
