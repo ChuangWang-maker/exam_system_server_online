@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,5 +44,40 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
             category.setCount(countMap.getOrDefault(id, 0L));
         }
         return categoryList;
+    }
+
+    /**
+     * 获取分类树形结构
+     * @return
+     */
+    @Override
+    public List<Category> getCategoryTreeList() {
+        //1.查询所有分类信息集合（单表操作）
+        LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.orderByAsc(Category::getSort);
+        List<Category> categoryList =  list(queryWrapper);
+        //2.QuestionMapper变量查询方法，category_id进行分组，并且统计每个分类下的题目数量count
+        List<Map<String,Long>> mapList = questionMapper.selectCategoryQuestionCount();
+        //3.题目查询的分类的题目数量赋值给分类集合
+        Map<Long, Long> countMap = mapList.stream().collect(Collectors.toMap(k -> k.get("category_id"), v -> v.get("count")));
+        for (Category category : categoryList){
+            Long id = category.getId();
+            category.setCount(countMap.getOrDefault(id, 0L));
+        }
+        //4.分类信息进行分组（parent_uid） stream分组
+        //key - parent
+        //value - list<子分类>
+        Map<Long, List<Category>> longListMap = categoryList.stream().collect(Collectors.groupingBy(Category::getParentId));
+        //5.筛选分类信息（获取一级分类）
+        List<Category> parentCategoryList = categoryList.stream().filter(c -> c.getParentId() == 0).collect(Collectors.toList());
+        //6.给一级分类循环，获取子分类，并计算count（父分类的count + 所有子分类的count）
+        for (Category parentCategory : parentCategoryList) {
+            List<Category> sonCategoryList = longListMap.getOrDefault(parentCategory.getId(), new ArrayList<>());
+            parentCategory.setChildren(sonCategoryList);
+            //count
+            Long sonCount = sonCategoryList.stream().collect(Collectors.summingLong(Category::getCount));
+            parentCategory.setCount(parentCategory.getCount() + sonCount);
+        }
+        return parentCategoryList;
     }
 }

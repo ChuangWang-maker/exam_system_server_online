@@ -13,4 +13,10 @@ public interface CategoryService extends IService<Category> {
      * @return
      */
     List<Category> findCategoryList();
+
+    /**
+     * 获取分类树形结构
+     * @return
+     */
+    List<Category> getCategoryTreeList();
 }
