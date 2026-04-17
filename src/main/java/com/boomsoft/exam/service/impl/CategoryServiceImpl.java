@@ -80,4 +80,22 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         }
         return parentCategoryList;
     }
+
+    /**
+     * 保存分类信息
+     * @param category
+     */
+    @Override
+    public void saveCategory(Category category) {
+        //1.当前父分类下不能存在同名的子分类
+        LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Category::getParentId,category.getParentId());
+        queryWrapper.eq(Category::getName,category.getName());
+        Long count = count(queryWrapper);
+        if (count > 0) {
+            throw new RuntimeException("%s父分类下已存在名为：%s的子分类信息！本次添加失败！".formatted(category.getParentId(),category.getName()));
+        }
+        //2.保存当前分类即可
+        save(category);
+    }
 }
