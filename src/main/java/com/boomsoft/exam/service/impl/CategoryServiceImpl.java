@@ -4,6 +4,7 @@ package com.boomsoft.exam.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.boomsoft.exam.entity.Category;
+import com.boomsoft.exam.entity.Question;
 import com.boomsoft.exam.mapper.CategoryMapper;
 import com.boomsoft.exam.mapper.QuestionMapper;
 import com.boomsoft.exam.service.CategoryService;
@@ -115,5 +116,30 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         updateById(category);
     }
 
-
+    /**
+     * 删除分类
+     * @param id
+     */
+    @Override
+    public void removeCategory(Long id) {
+        //1.判断是不是一级分类
+        Category category = getById(id);
+        if (category == null){
+            log.info("要删除的分类已经被删除！分类ID为：{}", id);
+            return;
+        }
+        if (category.getParentId() == 0) {
+            //一级分类
+            throw new RuntimeException("id = %s的分类为一级分类，不允许删除！".formatted(id));
+        }
+        //2.判断有没有关联的题目
+        LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Question::getCategoryId,id);
+        Long count = questionMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new RuntimeException("id = %s的分类下有%s个题目，不允许删除！".formatted(id,count));
+        }
+        // 3.删除分类
+        removeById(id);
+    }
 }

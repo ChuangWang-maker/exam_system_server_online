@@ -31,4 +31,10 @@ public interface CategoryService extends IService<Category> {
      * @param category
      */
     void updateCategory(Category category);
+
+    /**
+     * 删除分类信息
+     * @param id
+     */
+    void removeCategory(Long id);
 }
