@@ -13,4 +13,28 @@ public interface CategoryService extends IService<Category> {
      * @return
      */
     List<Category> findCategoryList();
+
+    /**
+     * 获取分类树形结构
+     * @return
+     */
+    List<Category> getCategoryTreeList();
+
+    /**
+     * 保存分类信息
+     * @param category
+     */
+    void saveCategory(Category category);
+
+    /**
+     * 更新分类信息
+     * @param category
+     */
+    void updateCategory(Category category);
+
+    /**
+     * 删除分类信息
+     * @param id
+     */
+    void removeCategory(Long id);
 }
