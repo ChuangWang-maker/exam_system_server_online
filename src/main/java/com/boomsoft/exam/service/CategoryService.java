@@ -25,4 +25,10 @@ public interface CategoryService extends IService<Category> {
      * @param category
      */
     void saveCategory(Category category);
+
+    /**
+     * 更新分类信息
+     * @param category
+     */
+    void updateCategory(Category category);
 }

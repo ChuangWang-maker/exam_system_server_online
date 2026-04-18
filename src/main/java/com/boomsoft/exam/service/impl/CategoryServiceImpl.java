@@ -98,4 +98,22 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         //2.保存当前分类即可
         save(category);
     }
+
+
+    @Override
+    public void updateCategory(Category category) {
+        //1.校验，同一父分类下，不能与其他的子分类的name相同，可以和自己原来的name相同
+        LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Category::getParentId,category.getParentId());
+        queryWrapper.eq(Category::getName,category.getName());
+        queryWrapper.ne(Category::getId,category.getId());
+        Long count = count(queryWrapper);
+        if (count > 0) {
+            throw new RuntimeException("%s父分类下已存在名为：%s的子分类信息！本次修改失败！".formatted(category.getParentId(),category.getName()));
+        }
+        //2.更新分类信息
+        updateById(category);
+    }
+
+
 }
