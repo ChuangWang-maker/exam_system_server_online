@@ -73,7 +73,10 @@ public class QuestionController {
             QuestionQueryVo questionQueryVo) {
         // 返回统一格式的成功响应
         Page<Question> questionPage = new Page<>(page, size);
-        questionService.queryQuestionListByPage(questionPage,questionQueryVo);
+        //方案二：嵌套查询 分布查询实现 自定义多表查询查询语句
+        //questionService.queryQuestionListByPage(questionPage,questionQueryVo);
+        //方案三：使用mybatis-plus的方法全部查询，然后代码中进行处理
+        questionService.queryQuestionListByStream(questionPage,questionQueryVo);
         log.info("查询第{}页，数据成功！返回结果为：{}",page,questionPage.getRecords());
         return Result.success(questionPage);
     }

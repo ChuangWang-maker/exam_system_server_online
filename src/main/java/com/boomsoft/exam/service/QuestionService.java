@@ -40,4 +40,11 @@ public interface QuestionService extends IService<Question> {
      * @param questionQueryVo 查询参数
      */
     void queryQuestionListByPage(Page<Question> questionPage, QuestionQueryVo questionQueryVo);
+
+    /**
+     * 查询题目列表（分页） 方案三：java代码处理
+     * @param questionPage
+     * @param questionQueryVo
+     */
+    void queryQuestionListByStream(Page<Question> questionPage, QuestionQueryVo questionQueryVo);
 }
