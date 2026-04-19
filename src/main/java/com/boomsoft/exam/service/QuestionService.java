@@ -1,7 +1,9 @@
 package com.boomsoft.exam.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.boomsoft.exam.entity.Question;
+import com.boomsoft.exam.vo.QuestionQueryVo;
 
 import java.util.List;
 
@@ -31,4 +33,11 @@ import java.util.List;
 public interface QuestionService extends IService<Question> {
 
 
-} 
+    /**
+     * 查询题目列表（分页） 方案二：进行分步查询
+     *
+     * @param questionPage 分页参数
+     * @param questionQueryVo 查询参数
+     */
+    void queryQuestionListByPage(Page<Question> questionPage, QuestionQueryVo questionQueryVo);
+}

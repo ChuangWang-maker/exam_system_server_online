@@ -1,6 +1,10 @@
 package com.boomsoft.exam.config;
 
+import com.baomidou.mybatisplus.annotation.DbType;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -13,4 +17,12 @@ import org.springframework.context.annotation.Configuration;
 @MapperScan(basePackages = "com.boomsoft.exam.mapper")
 @Configuration
 public class MybatisPlusConfiguration {
+
+    @Bean
+    public MybatisPlusInterceptor plusInterceptor(){
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        //mybatis-plus分页插件
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        return interceptor;
+    }
 }
