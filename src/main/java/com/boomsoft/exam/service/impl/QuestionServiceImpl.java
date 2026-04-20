@@ -4,6 +4,7 @@ package com.boomsoft.exam.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.boomsoft.exam.common.CacheConstants;
 import com.boomsoft.exam.entity.Question;
 import com.boomsoft.exam.entity.QuestionAnswer;
 import com.boomsoft.exam.entity.QuestionChoice;
@@ -11,6 +12,7 @@ import com.boomsoft.exam.mapper.QuestionAnswerMapper;
 import com.boomsoft.exam.mapper.QuestionChoiceMapper;
 import com.boomsoft.exam.mapper.QuestionMapper;
 import com.boomsoft.exam.service.QuestionService;
+import com.boomsoft.exam.utils.RedisUtils;
 import com.boomsoft.exam.vo.QuestionQueryVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Autowired
     private QuestionAnswerMapper questionAnswerMapper;
+
+    @Autowired
+    private RedisUtils redisUtils;
 
     /**
      * 查询题目列表（分页） 方案二：进行分步查询
@@ -106,5 +111,45 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 }
             }
         });
+    }
+
+    /**
+     * 根据id查询题目信息
+     *    题目+答案+选项
+     *    方案一：嵌套结构 连表查询 + result [可以使用，没有分页]
+     *    方案二：嵌套查询 分步查询实现 【可以使用，没有必要1+n】
+     *    方案三：查询+java代码赋值即可
+     * @param id
+     * @return
+     */
+    @Override
+    public Question queryQuestionById(Long id) {
+        //1.查询题目详情对象
+        Question question = getById(id);
+        if (question == null){
+            //log.debug("查询id为{}的题目已经不存在！",id);
+            throw new RuntimeException("查询id为%s的题目已经不存在！".formatted(id));
+        }
+        //2.查询题目对应的答案
+        QuestionAnswer questionAnswer = questionAnswerMapper.selectOne(new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId, id));
+        //3.查询题目对应的选项（选择题才有选项）
+        if ("CHOICE".equals(question.getType())){
+            List<QuestionChoice> questionChoices = questionChoiceMapper.selectList(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, id));
+            question.setChoices(questionChoices);
+        }
+        //4.预留：进行redis的数据缓存zset
+        new Thread(() -> {
+            incrementQuestionScore(question.getId());
+        }).start();
+        return question;
+    }
+
+    /**
+     * 方法进行题目加分，在排行榜中 被一部调用
+     * @param questionId
+     */
+    private void incrementQuestionScore(Long questionId){
+        Double score = redisUtils.zIncrementScore(CacheConstants.POPULAR_QUESTIONS_KEY, questionId, 1);
+        log.debug("题目id为{}的题目热榜分数累计，累计后的分数为{}",questionId,score);
     }
 }

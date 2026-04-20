@@ -47,4 +47,11 @@ public interface QuestionService extends IService<Question> {
      * @param questionQueryVo
      */
     void queryQuestionListByStream(Page<Question> questionPage, QuestionQueryVo questionQueryVo);
+
+    /**
+     * 根据id查询题目
+     * @param id
+     * @return
+     */
+    Question queryQuestionById(Long id);
 }
