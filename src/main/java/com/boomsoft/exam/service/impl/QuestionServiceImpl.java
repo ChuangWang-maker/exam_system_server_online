@@ -17,6 +17,7 @@ import com.boomsoft.exam.vo.QuestionQueryVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
 import java.util.Comparator;
@@ -142,6 +143,95 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             incrementQuestionScore(question.getId());
         }).start();
         return question;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveQuestion(Question question) {
+        // 1. 先判断不能重复 同一个type类型下（选择题 简答 判断题） title不能重复
+        LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Question::getType, question.getType());
+        queryWrapper.eq(Question::getTitle, question.getTitle());
+
+        long count = count(queryWrapper);
+
+        if (count > 0) {
+            throw new RuntimeException("在%s类型下，已经存在名为%s的题目信息，保存失败！".formatted(question.getType(), question.getTitle()));
+        }
+        // 2. 保存题目信息（先保存题目，保存了题目你才有题目的id，才可以进行后续的答案和选项保存）
+        save(question);
+        // 3. 判断是不是选择题，是，根据选项的正确给答案赋值 同时将选项插入到选项表
+        QuestionAnswer answer = question.getAnswer(); // 获取答案对象 如果是选择题 答案属性为""
+        answer.setQuestionId(question.getId());
+        if ("CHOICE".equals(question.getType())) {
+            List<QuestionChoice> questionChoices = question.getChoices();
+            StringBuilder sb = new StringBuilder(); // 拼接正确答案 A,D
+            for (int i = 0; i < questionChoices.size(); i++) {
+                QuestionChoice choice = questionChoices.get(i);
+                choice.setSort(i); // 0 1 2 3
+                choice.setQuestionId(question.getId());
+                // 保存选项
+                questionChoiceMapper.insert(choice);
+                if (choice.getIsCorrect()) {
+                    if (sb.length() > 0) {
+                        sb.append(",");
+                    }
+                    sb.append((char) ('A' + i));
+                }
+            }
+            // 答案赋值
+            answer.setAnswer(sb.toString());
+        }
+        // 4. 完成答案数据的插入
+        questionAnswerMapper.insert(answer);
+    }
+
+    /**
+     * 修改题目信息
+     * @param question
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateQuestion(Question question) {
+       //1.进行判断 不同的题目id的title不能相同
+        LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Question::getTitle, question.getTitle());
+        queryWrapper.ne(Question::getId, question.getId());
+        long count = count(queryWrapper);
+        if (count > 0) {
+            throw new RuntimeException("修改完新的title：%s已经被其他题目占用了！更新失败！".formatted(question.getTitle()));
+        }
+        //2.进行题目信息的更新
+        updateById(question);
+        //3.进行答案的更新
+        QuestionAnswer questionAnswer = question.getAnswer();
+        //4.判断是不是选择题，[1.删除原有选项 2.添加新的选项 3.拼接正确答案 4.给答案对象的答案赋值]
+        if ("CHOICE".equals(question.getType())){
+            List<QuestionChoice> questionChoices = question.getChoices();
+            //1.删除原有选项
+            questionChoiceMapper.delete(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, question.getId()));
+            //2.添加新的选项
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < questionChoices.size(); i++) {
+                QuestionChoice choice = questionChoices.get(i);
+                choice.setId(null);
+                choice.setCreateTime(null);
+                choice.setUpdateTime(null);
+                choice.setSort(i);
+                choice.setQuestionId(question.getId());
+                questionChoiceMapper.insert(choice);
+                if (choice.getIsCorrect()) {
+                    if (sb.length() > 0) {
+                        sb.append(",");
+                    }
+                    sb.append((char) ('A' + i));
+                }
+            }
+            questionAnswer.setAnswer(sb.toString());
+        }
+        //5.完成答案的更新
+        questionAnswerMapper.updateById(questionAnswer);
+
     }
 
     /**

@@ -119,8 +119,9 @@ public class QuestionController {
     @PostMapping  // 映射POST请求到/api/questions
     @Operation(summary = "创建新题目", description = "添加新的考试题目，支持选择题、判断题、简答题等多种题型")  // API描述
     public Result<Question> createQuestion(@RequestBody Question question) {
-
-        return Result.success(null);
+        questionService.saveQuestion(question);
+        log.info("创建题目接口调用结束！创建数据为：{}",question);
+        return Result.success(question);
     }
     
     /**
@@ -140,7 +141,9 @@ public class QuestionController {
     public Result<Question> updateQuestion(
             @Parameter(description = "题目ID") @PathVariable Long id, 
             @RequestBody Question question) {
-        return Result.success(null);
+        questionService.updateQuestion(question);
+        log.info("更新题目接口调用结束！更新数据为：{}",question);
+        return Result.success(question);
     }
     
     /**

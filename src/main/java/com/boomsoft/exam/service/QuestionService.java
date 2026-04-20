@@ -54,4 +54,16 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     Question queryQuestionById(Long id);
+
+    /**
+     * 保存题目
+     * @param question
+     */
+    void saveQuestion(Question question);
+
+    /**
+     * 修改题目
+     * @param question
+     */
+    void updateQuestion(Question question);
 }
