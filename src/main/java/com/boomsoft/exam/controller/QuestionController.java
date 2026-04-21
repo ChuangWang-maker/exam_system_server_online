@@ -165,11 +165,10 @@ public class QuestionController {
     public Result<String> deleteQuestion(
             @Parameter(description = "题目ID") @PathVariable Long id) {
         // 根据操作结果返回不同的响应
-        if (true) {
-            return Result.success("题目删除成功");
-        } else {
-            return Result.error("题目删除失败");
-        }
+        questionService.removeQuestion(id);
+        log.info("删除题目接口调用结束！删除数据id为：{}",id);
+        return Result.success("题目删除成功");
+
     }
     
     /**

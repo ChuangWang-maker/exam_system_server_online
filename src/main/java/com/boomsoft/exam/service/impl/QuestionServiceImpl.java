@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.boomsoft.exam.common.CacheConstants;
+import com.boomsoft.exam.entity.PaperQuestion;
 import com.boomsoft.exam.entity.Question;
 import com.boomsoft.exam.entity.QuestionAnswer;
 import com.boomsoft.exam.entity.QuestionChoice;
+import com.boomsoft.exam.mapper.PaperQuestionMapper;
 import com.boomsoft.exam.mapper.QuestionAnswerMapper;
 import com.boomsoft.exam.mapper.QuestionChoiceMapper;
 import com.boomsoft.exam.mapper.QuestionMapper;
@@ -43,7 +45,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private QuestionAnswerMapper questionAnswerMapper;
 
     @Autowired
+    private PaperQuestionMapper paperQuestionMapper;
+
+    @Autowired
     private RedisUtils redisUtils;
+
 
     /**
      * 查询题目列表（分页） 方案二：进行分步查询
@@ -233,6 +239,29 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         questionAnswerMapper.updateById(questionAnswer);
 
     }
+
+    /**
+     * 删除题目信息
+     * @param id
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void removeQuestion(Long id) {
+        //1.检查是否有关联的试卷题目。有删除失败
+        LambdaQueryWrapper<PaperQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PaperQuestion::getQuestionId, id);
+        long count = paperQuestionMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new RuntimeException("题目id为:%s已经关联试卷，关联的数量为:%s，删除失败！".formatted(id,count));
+        }
+        //2.删除本身
+        removeById(id);
+        //3.删除相关的子数据，选项和答案
+        questionChoiceMapper.delete(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, id));
+        questionAnswerMapper.delete(new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId, id));
+        //4.添加事务注解
+    }
+
 
     /**
      * 方法进行题目加分，在排行榜中 被一部调用

@@ -66,4 +66,10 @@ public interface QuestionService extends IService<Question> {
      * @param question
      */
     void updateQuestion(Question question);
+
+    /**
+     * 删除题目
+     * @param id
+     */
+    void removeQuestion(Long id);
 }
