@@ -14,14 +14,18 @@ import com.boomsoft.exam.mapper.QuestionAnswerMapper;
 import com.boomsoft.exam.mapper.QuestionChoiceMapper;
 import com.boomsoft.exam.mapper.QuestionMapper;
 import com.boomsoft.exam.service.QuestionService;
+import com.boomsoft.exam.utils.ExcelUtil;
 import com.boomsoft.exam.utils.RedisUtils;
+import com.boomsoft.exam.vo.QuestionImportVo;
 import com.boomsoft.exam.vo.QuestionQueryVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -268,6 +272,31 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         //给题目进行选项和答案赋值
         fullQuestionChoiceAndAnswer(popularQuestion);
         return popularQuestion;
+    }
+
+    /**
+     * 预览导入的Excel文件
+     * @param file
+     * @return
+     */
+    @Override
+    public List<QuestionImportVo> previewExcel(MultipartFile file) throws IOException {
+        // 1. 文件校验（非空 | 格式问题 xls xlsx格式结尾）
+        if (file.isEmpty()) {
+            throw new RuntimeException("生成预览数据的表格文件为空！");
+        }
+
+        String filename = file.getOriginalFilename();
+        // 校验后缀名是否为标准的 Excel 格式
+        if (filename == null || (!filename.endsWith("xls") && !filename.endsWith("xlsx"))) {
+            throw new RuntimeException("上传的文件格式错误，必须是xls或者xlsx格式！");
+        }
+
+        // 2. 使用 ExcelUtil 工具类解析 file 输入流，转换为 List<QuestionImportVo>
+        List<QuestionImportVo> questionImportVoList = ExcelUtil.parseExcel(file);
+
+        // 3. 返回结果给 Controller 层进行展示
+        return questionImportVoList;
     }
 
     /**

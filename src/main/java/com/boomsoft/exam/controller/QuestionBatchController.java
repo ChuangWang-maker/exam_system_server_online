@@ -1,17 +1,23 @@
 package com.boomsoft.exam.controller;
 
 import com.boomsoft.exam.common.Result;
+import com.boomsoft.exam.service.QuestionService;
+import com.boomsoft.exam.utils.ExcelUtil;
 import com.boomsoft.exam.vo.AiGenerateRequestVo;
 import com.boomsoft.exam.vo.QuestionImportVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -24,6 +30,9 @@ import java.util.List;
 @CrossOrigin(origins = "*")  // 允许跨域访问
 @Tag(name = "题目批量操作", description = "题目批量管理相关操作，包括Excel导入、AI生成题目、批量验证等功能")  // Swagger API分组
 public class QuestionBatchController {
+
+    @Autowired
+    private QuestionService questionService;
     
 
     /**
@@ -32,8 +41,25 @@ public class QuestionBatchController {
      */
     @GetMapping("/template")  // 处理GET请求
     @Operation(summary = "下载Excel导入模板", description = "下载题目批量导入的Excel模板文件")  // API描述
-    public ResponseEntity<byte[]> downloadTemplate() {
-      return null;
+    public ResponseEntity<byte[]> downloadTemplate() throws IOException {
+        // 1. 调用工具类生成模板 Excel 对应的字节数组
+        // 该方法在内存中构建 Workbook，填充表头和示例数据，最后转为二进制字节流
+        byte[] template = ExcelUtil.generateTemplate();
+        // 2. 将数据装载到 ResponseEntity 中，并设置 HTTP 响应头
+        ResponseEntity<byte[]> responseEntity = ResponseEntity.ok() // 返回 HTTP 状态码 200 (OK)
+                /* * 设置响应头 "Content-Disposition"：
+                 * - "attachment": 明确告知浏览器这是一个附件，不要直接在网页中打开，而是弹出下载框。
+                 * - "filename=template.xlsx": 指定下载到本地后的默认文件名。
+                 */
+                .header("content-disposition", "attachment;filename=template.xlsx")
+                /* * 设置 Content-Type 为二进制流类型 (APPLICATION_OCTET_STREAM)：
+                 * 表示返回的是一个不确定的二进制文件流，浏览器会根据此类型执行下载动作。
+                 */
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                // 将生成的模板字节数组放入 HTTP 响应体 (Body) 中
+                .body(template);
+        // 3. 返回构建好的 ResponseEntity 对象，正式向客户端发送数据包
+        return responseEntity;
     }
     
     /**
@@ -44,8 +70,10 @@ public class QuestionBatchController {
     @PostMapping("/preview-excel")  // 处理POST请求
     @Operation(summary = "预览Excel文件内容", description = "解析并预览Excel文件中的题目内容，不会导入到数据库")  // API描述
     public Result<List<QuestionImportVo>> previewExcel(
-            @Parameter(description = "Excel文件，支持.xls和.xlsx格式") @RequestParam("file") MultipartFile file) {
-       return null;
+            @Parameter(description = "Excel文件，支持.xls和.xlsx格式") @RequestParam("file") MultipartFile file) throws IOException {
+        List<QuestionImportVo> questionsImportVoList = questionService.previewExcel(file);
+        log.info("预览Excel文件接口调用结束！预览数据为：{}",questionsImportVoList);
+        return Result.success(questionsImportVoList);
     }
     
     /**
@@ -57,7 +85,7 @@ public class QuestionBatchController {
     @Operation(summary = "从Excel文件批量导入题目", description = "解析Excel文件并将题目批量导入到数据库")  // API描述
     public Result<String> importFromExcel(
             @Parameter(description = "Excel文件，包含题目数据") @RequestParam("file") MultipartFile file) {
-      return null;
+        return null;
     }
     
     /**
