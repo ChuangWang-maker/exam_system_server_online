@@ -263,10 +263,11 @@ public class QuestionController {
     @GetMapping("/popular")  // 处理GET请求
     @Operation(summary = "获取热门题目", description = "获取访问次数最多的热门题目，用于首页推荐展示")  // API描述
     public Result<List<Question>> getPopularQuestions(
-            @Parameter(description = "返回题目数量", example = "10") @RequestParam(defaultValue = "10") Integer size) {
-
+            @Parameter(description = "返回题目数量", example = "6") @RequestParam(defaultValue = "6") Integer size) {
+        List<Question> popularQuestions = questionService.queryPopularList(size);
+        log.info("查询热门题目接口调用结束！查询数量为：{},查询具体的数据为：{}", popularQuestions.size(), popularQuestions);
         // 异常处理：记录日志并返回友好的错误信息
-        return Result.error("获取热门题目失败");
+        return Result.success(popularQuestions);
 
     }
 

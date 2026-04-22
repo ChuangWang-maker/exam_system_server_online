@@ -72,4 +72,11 @@ public interface QuestionService extends IService<Question> {
      * @param id
      */
     void removeQuestion(Long id);
+
+    /**
+     * 查询最热门的题目
+     * @param size
+     * @return
+     */
+    List<Question> queryPopularList(Integer size);
 }

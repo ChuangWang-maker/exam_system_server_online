@@ -22,9 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -82,43 +80,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             log.info("没有符合条件的题目信息，后续可以终止！直接返回结果！");
             return;
         }
-        //2.查询题目对应的所有的选项和所有的答案（mybatis-plus）
-        //我们不循环 题目集合 questionPage.getRecords() 我们一次查询题目所有的答案和选项！进行Java代码处理!
-        //todo: 我们避免1+n的问题
-        //获取所有的题目id
-        List<Long> questionIds = questionPage.getRecords().stream().map(Question::getId).collect(Collectors.toList());
-        //查询所有选项
-        LambdaQueryWrapper<QuestionChoice> questionChoiceQueryWrapper = new LambdaQueryWrapper<>();
-        questionChoiceQueryWrapper.in(QuestionChoice::getQuestionId,questionIds);
-        List<QuestionChoice> questionChoices = questionChoiceMapper.selectList(questionChoiceQueryWrapper);
-        //查询所有答案
-        LambdaQueryWrapper<QuestionAnswer> questionAnswerQueryWrapper = new LambdaQueryWrapper<>();
-        questionAnswerQueryWrapper.in(QuestionAnswer::getQuestionId,questionIds);
-        List<QuestionAnswer> questionAnswers = questionAnswerMapper.selectList(questionAnswerQueryWrapper);
-
-        //3.题目的选项和答案集合转成map格式map（key => 题目id,题目对应的选项合计 | 题目对应的答案对象）
-        //题目答案转成map
-        Map<Long, QuestionAnswer> questionAnswerMap = questionAnswers.stream().collect(Collectors.toMap(QuestionAnswer::getQuestionId, a -> a));
-        //题目选项转成map
-        Map<Long, List<QuestionChoice>> questionChoiceMap = questionChoices.stream().collect(Collectors.groupingBy(QuestionChoice::getQuestionId));
-
-
-        //4.循环题目列表，进行题目的选项和方案赋值工作
-        questionPage.getRecords().forEach(question -> {
-            //给题目答案赋值(题目一定有答案)
-            question.setAnswer(questionAnswerMap.get(question.getId()));
-            //给题目选项赋值（只有选择题有选项！选择题的tpye = CHOICE）
-            if("CHOICE".equals(question.getType())){
-                //只要是选项的操作，一定要考虑排序的问题sort
-                List<QuestionChoice> qc = questionChoiceMap.get(question.getId());
-                //字段进行排序,从小到大正序
-                if (!ObjectUtils.isEmpty(qc)){
-                    qc.sort(Comparator.comparing(QuestionChoice::getSort));
-                    question.setChoices(qc);
-                }
-            }
-        });
+        fullQuestionChoiceAndAnswer(questionPage.getRecords());
     }
+
+
 
     /**
      * 根据id查询题目信息
@@ -262,6 +227,91 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         //4.添加事务注解
     }
 
+    @Override
+    public List<Question> queryPopularList(Integer size) {
+        //定义一个集合存储热门题目
+        List<Question> popularQuestion = new ArrayList<>();
+
+        //1.查询redis中缓存的题目id！（按照顺序访问倒叙查询）
+        //有序，按照题目访问次数倒叙排序
+        Set<Object> popularIds = redisUtils.zReverseRange(CacheConstants.POPULAR_QUESTIONS_KEY, 0, size - 1);
+        //2.根据查询的id查询对应的热门题目结合
+        if(!ObjectUtils.isEmpty(popularIds)){
+            //有序，按照题目访问次数倒叙排序
+            List<Long> longList = popularIds.stream().map(id -> Long.valueOf(id.toString())).collect(Collectors.toList());
+            //处理热门题目【可能热门题目对，但热门题目顺序有问题】
+            //List<Question> questionList = listByIds(longList);
+            for (Long id : longList) {
+                Question question = getById(id);
+                //校验，id有，但题目已经被删除！redis的数据和数据库数据不同步问题！
+                if (question != null){
+                    popularQuestion.add(question);
+                }
+            }
+        }
+        //检查热门题目集合数量是否满足size条
+        int diff = size - popularQuestion.size();
+        //不满足需要我们自己补充（题目表查询 -》 查询最新的题目）
+        if (diff > 0){
+            //从数据库查询最新的题目diff个
+            LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.orderByDesc(Question::getCreateTime);//根据题目排序
+
+            //已有的id进行过滤和排除
+            List<Long> exisQuestionId = popularQuestion.stream().map(Question::getId).collect(Collectors.toList());
+            queryWrapper.notIn(!ObjectUtils.isEmpty(exisQuestionId),Question::getId, exisQuestionId);
+            //切割指定的diff条
+            queryWrapper.last("limit " + diff); //在我们sql语句最后添加一段sql
+            List<Question> newQuestions = list(queryWrapper);
+            popularQuestion.addAll(newQuestions);
+        }
+        //给题目进行选项和答案赋值
+        fullQuestionChoiceAndAnswer(popularQuestion);
+        return popularQuestion;
+    }
+
+    /**
+     * 给题目进行选项和答案赋值
+     * @param questionList
+     */
+    private void fullQuestionChoiceAndAnswer(List<Question> questionList) {
+        //2.查询题目对应的所有的选项和所有的答案（mybatis-plus）
+        //我们不循环 题目集合 questionPage.getRecords() 我们一次查询题目所有的答案和选项！进行Java代码处理!
+        //todo: 我们避免1+n的问题
+        //获取所有的题目id
+        List<Long> questionIds = questionList.stream().map(Question::getId).collect(Collectors.toList());
+        //查询所有选项
+        LambdaQueryWrapper<QuestionChoice> questionChoiceQueryWrapper = new LambdaQueryWrapper<>();
+        questionChoiceQueryWrapper.in(QuestionChoice::getQuestionId,questionIds);
+        List<QuestionChoice> questionChoices = questionChoiceMapper.selectList(questionChoiceQueryWrapper);
+        //查询所有答案
+        LambdaQueryWrapper<QuestionAnswer> questionAnswerQueryWrapper = new LambdaQueryWrapper<>();
+        questionAnswerQueryWrapper.in(QuestionAnswer::getQuestionId,questionIds);
+        List<QuestionAnswer> questionAnswers = questionAnswerMapper.selectList(questionAnswerQueryWrapper);
+
+        //3.题目的选项和答案集合转成map格式map（key => 题目id,题目对应的选项合计 | 题目对应的答案对象）
+        //题目答案转成map
+        Map<Long, QuestionAnswer> questionAnswerMap = questionAnswers.stream().collect(Collectors.toMap(QuestionAnswer::getQuestionId, a -> a));
+        //题目选项转成map
+        Map<Long, List<QuestionChoice>> questionChoiceMap = questionChoices.stream().collect(Collectors.groupingBy(QuestionChoice::getQuestionId));
+
+
+        //4.循环题目列表，进行题目的选项和方案赋值工作
+        questionList.forEach(question -> {
+            //给题目答案赋值(题目一定有答案)
+            question.setAnswer(questionAnswerMap.get(question.getId()));
+            //给题目选项赋值（只有选择题有选项！选择题的tpye = CHOICE）
+            if("CHOICE".equals(question.getType())){
+                //只要是选项的操作，一定要考虑排序的问题sort
+                List<QuestionChoice> qc = questionChoiceMap.get(question.getId());
+                //字段进行排序,从小到大正序
+                if (!ObjectUtils.isEmpty(qc)){
+                    qc.sort(Comparator.comparing(QuestionChoice::getSort));
+                    question.setChoices(qc);
+                }
+            }
+        });
+    }
 
     /**
      * 方法进行题目加分，在排行榜中 被一部调用
