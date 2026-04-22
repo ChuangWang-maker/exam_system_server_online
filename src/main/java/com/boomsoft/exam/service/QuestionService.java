@@ -1,7 +1,9 @@
 package com.boomsoft.exam.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.boomsoft.exam.entity.Question;
+import com.boomsoft.exam.vo.QuestionQueryVo;
 
 import java.util.List;
 
@@ -31,4 +33,50 @@ import java.util.List;
 public interface QuestionService extends IService<Question> {
 
 
-} 
+    /**
+     * 查询题目列表（分页） 方案二：进行分步查询
+     *
+     * @param questionPage 分页参数
+     * @param questionQueryVo 查询参数
+     */
+    void queryQuestionListByPage(Page<Question> questionPage, QuestionQueryVo questionQueryVo);
+
+    /**
+     * 查询题目列表（分页） 方案三：java代码处理
+     * @param questionPage
+     * @param questionQueryVo
+     */
+    void queryQuestionListByStream(Page<Question> questionPage, QuestionQueryVo questionQueryVo);
+
+    /**
+     * 根据id查询题目
+     * @param id
+     * @return
+     */
+    Question queryQuestionById(Long id);
+
+    /**
+     * 保存题目
+     * @param question
+     */
+    void saveQuestion(Question question);
+
+    /**
+     * 修改题目
+     * @param question
+     */
+    void updateQuestion(Question question);
+
+    /**
+     * 删除题目
+     * @param id
+     */
+    void removeQuestion(Long id);
+
+    /**
+     * 查询最热门的题目
+     * @param size
+     * @return
+     */
+    List<Question> queryPopularList(Integer size);
+}
