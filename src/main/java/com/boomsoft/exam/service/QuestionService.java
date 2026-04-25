@@ -89,4 +89,11 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     List<QuestionImportVo> previewExcel(MultipartFile file) throws IOException;
+
+    /**
+     * 批量导入的题目信息
+     * @param questions
+     * @return
+     */
+    String importQuestions(List<QuestionImportVo> questions);
 }

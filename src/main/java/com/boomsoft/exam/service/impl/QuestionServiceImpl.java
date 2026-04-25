@@ -19,6 +19,7 @@ import com.boomsoft.exam.utils.RedisUtils;
 import com.boomsoft.exam.vo.QuestionImportVo;
 import com.boomsoft.exam.vo.QuestionQueryVo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -297,6 +298,56 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         // 3. 返回结果给 Controller 层进行展示
         return questionImportVoList;
+    }
+
+    @Override
+    public String importQuestions(List<QuestionImportVo> questions) {
+        //1.传入预览数据集合非空判断
+        if (ObjectUtils.isEmpty(questions)) {
+            return "题目批量导入接口调用结束，没有导入任何数据！";
+        }
+        //2.定义服务降级的代码结构
+        int successNumber = 0;
+        for (QuestionImportVo questionImportVo : questions) {
+            try {
+                //3.循环中，进行vo->question以及进行题目保存业务的调用
+                Question question = new Question();
+                //1. questionImportVo -> question ->属性-》question对象
+                BeanUtils.copyProperties(questionImportVo, question);
+                //2. questionImportVo-> List<ChoiceImportDto> choices -> question 对象-》List<QuestionChoice> choices;(选择题)
+                if ("CHOICE".equals(question.getType())){
+                    List<QuestionChoice> questionChoices = new ArrayList<>(questionImportVo.getChoices().size());
+                    for (QuestionImportVo.ChoiceImportDto importVoChoice : questionImportVo.getChoices()) {
+                        QuestionChoice questionChoice = new QuestionChoice();
+                        questionChoice.setContent(importVoChoice.getContent());
+                        questionChoice.setIsCorrect(importVoChoice.getIsCorrect());
+                        questionChoice.setSort(importVoChoice.getSort());
+                        questionChoices.add(questionChoice);
+                    }
+                    //选项赋值给question对象
+                    question. setChoices(questionChoices);
+                }
+                //3. questionImportVo -> answer 和 keyword -> Answer对象 -> question 对象-》 answer
+                QuestionAnswer questionAnswer = new QuestionAnswer();
+                //如果是判断题！questionImportVo.getAnswer()truefalse小写！数据库中QuestionAnswer答案必须是大写前端没有忽略大小！
+                if ("JUDGE".equals(question. getType())){
+                    questionAnswer. setAnswer(questionImportVo. getAnswer ().toUpperCase());
+                }else {
+                    questionAnswer.setAnswer(questionImportVo.getAnswer());
+                    questionAnswer.setKeywords(questionImportVo.getKeywords());
+                    question.setAnswer(questionAnswer);
+                }
+                //4.保存题目
+                saveQuestion(question);
+                successNumber++;
+            }catch (Exception e){
+                //保存错误的题目名称
+                log.error("题目批量导入接口调用结束，导入失败的题目为：{}", questionImportVo.getTitle());
+            }
+        }
+        //4.拼接我们反馈的结构：题目批量导入接口调用结束，共计导入x条，数据一共x条！！
+        String result = "题目批量导入接口调用结束，共计导入" + successNumber + "条数据，数据一共" + questions.size() + "条！";
+        return result;
     }
 
     /**
