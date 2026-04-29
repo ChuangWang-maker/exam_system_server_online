@@ -1,26 +1,37 @@
 package com.boomsoft.exam.controller;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.boomsoft.exam.common.Result;
 import com.boomsoft.exam.entity.Paper;
+import com.boomsoft.exam.service.PaperService;
 import com.boomsoft.exam.vo.AiPaperVo;
 import com.boomsoft.exam.vo.PaperVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 试卷控制器 - 处理试卷管理相关的HTTP请求
  * 包括试卷的CRUD操作、AI智能组卷、状态管理等功能
  */
+@CrossOrigin
+@Slf4j
 @RestController  // REST控制器，返回JSON数据
 @RequestMapping("/api/papers")  // 试卷API路径前缀
 @Tag(name = "试卷管理", description = "试卷相关操作，包括创建、查询、更新、删除，以及AI智能组卷功能")  // Swagger API分组
 public class PaperController {
+
+    @Autowired
+    private PaperService paperService;
 
 
 
@@ -32,8 +43,16 @@ public class PaperController {
     public Result<java.util.List<Paper>> listPapers(
             @Parameter(description = "试卷名称，支持模糊查询") @RequestParam(required = false) String name,
             @Parameter(description = "试卷状态，可选值：DRAFT/PUBLISHED/STOPPED") @RequestParam(required = false) String status) {
-
-        return Result.success(null);
+        //创建一个LambdaQueryWrapper
+        LambdaQueryWrapper<Paper> queryWrapper = new LambdaQueryWrapper<>();
+        //判断动态条件并且封装到wrapper (condition)
+        queryWrapper.like(!ObjectUtils.isEmpty(name), Paper::getName, name);
+        queryWrapper.eq(!ObjectUtils.isEmpty(status), Paper::getStatus, status);
+        //调用业务层的通用方法 list()
+        List<Paper> paperList = paperService.list(queryWrapper);
+        log.info("查询试卷接口调用结束，查询数据为{}", paperList);
+        //将结果装到result中即可!
+        return Result.success(paperList);
     }
 
     /**
