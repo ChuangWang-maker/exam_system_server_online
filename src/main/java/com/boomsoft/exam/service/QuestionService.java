@@ -3,8 +3,12 @@ package com.boomsoft.exam.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.boomsoft.exam.entity.Question;
+import com.boomsoft.exam.vo.AiGenerateRequestVo;
+import com.boomsoft.exam.vo.QuestionImportVo;
 import com.boomsoft.exam.vo.QuestionQueryVo;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -79,4 +83,25 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     List<Question> queryPopularList(Integer size);
+
+    /**
+     * 根据文件生成预览Excel文件内容（不入库）
+     * @param file
+     * @return
+     */
+    List<QuestionImportVo> previewExcel(MultipartFile file) throws IOException;
+
+    /**
+     * 批量导入的题目信息
+     * @param questions
+     * @return
+     */
+    String importQuestions(List<QuestionImportVo> questions);
+
+    /**
+     * 使用AI生成题目（预览，不入库）
+     * @param request
+     * @return
+     */
+    List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request) throws InterruptedException;
 }
