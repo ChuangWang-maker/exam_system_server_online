@@ -103,5 +103,5 @@ public interface QuestionService extends IService<Question> {
      * @param request
      * @return
      */
-    List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request);
+    List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request) throws InterruptedException;
 }

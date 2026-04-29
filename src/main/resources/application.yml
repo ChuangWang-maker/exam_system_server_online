@@ -51,3 +51,4 @@ kimi:
     base-url: https://api.moonshot.cn/v1/chat/completions
     model: moonshot-v1-32k
     temperature: 0.3
+    max-tokens: 4096

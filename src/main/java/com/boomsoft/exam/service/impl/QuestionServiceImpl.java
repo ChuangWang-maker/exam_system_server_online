@@ -1,6 +1,8 @@
 package com.boomsoft.exam.service.impl;
 
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -356,8 +358,73 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     }
 
     @Override
-    public List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request) {
-        return List.of();
+    public List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request) throws InterruptedException {
+        // 1. 生成对应的提示词
+        String prompt = kimiAiService.buildPrompt(request);
+        log.debug("ai出题的条件为：{}，生成对应的提示词为：{}", request, prompt);
+
+        // 2. 调用ai模型获取结果
+        String response = kimiAiService.callKimiAI(prompt);
+
+        // 3. 进行结果的解析即可
+        /*
+            ```json
+                {
+                    questions:[
+                        {
+
+                        }
+                    ]
+                }
+            ```
+        */
+        // 3.1 判定开始（```json） 和 结束字符的位置（```）
+        int startIndex = response.indexOf("```json");
+        int endIndex = response.lastIndexOf("```");
+
+        if (startIndex != -1 && endIndex != -1 && startIndex < endIndex) {
+            // 数据结构是正确 +7 排除 ```json本身的内容
+            String resultJson = response.substring(startIndex + 7, endIndex);
+            //fastjson
+            JSONObject jsonObject = JSONObject.parseObject(resultJson);
+            JSONArray questions = jsonObject.getJSONArray("questions");
+            List<QuestionImportVo> questionImportVoList = new ArrayList<>();
+
+            for (int i = 0; i < questions.size(); i++) {
+                //循环解析内容 {} => QuestionImportVo
+                JSONObject itemObject = questions.getJSONObject(i);
+                QuestionImportVo questionImportVo = new QuestionImportVo();
+
+                questionImportVo.setTitle(itemObject.getString("title"));
+                questionImportVo.setType(itemObject.getString("type"));
+                questionImportVo.setMulti(itemObject.getBoolean("multi"));
+                questionImportVo.setCategoryId(request.getCategoryId());
+                questionImportVo.setDifficulty(itemObject.getString("difficulty"));
+                questionImportVo.setScore(itemObject.getInteger("score"));
+                questionImportVo.setAnalysis(itemObject.getString("analysis"));
+                questionImportVo.setAnswer(itemObject.getString("answer"));
+
+                //选择题的选项
+                if ("CHOICE".equals(questionImportVo.getType())){
+                    //获取选项的JSONArray
+                    JSONArray choices = itemObject.getJSONArray("choices");
+                    List<QuestionImportVo.ChoiceImportDto> choiceImportDtoList = new ArrayList<>();
+
+                    for (int j = 0; j < choices.size(); j++) {
+                        QuestionImportVo.ChoiceImportDto choiceImportDto = new QuestionImportVo.ChoiceImportDto();
+                        choiceImportDto.setContent(choices.getJSONObject(j).getString("content"));
+                        choiceImportDto.setIsCorrect(choices.getJSONObject(j).getBoolean("isCorrect"));
+                        choiceImportDto.setSort(choices.getJSONObject(j).getInteger("sort"));
+                        choiceImportDtoList.add(choiceImportDto);
+                    }
+                    questionImportVo.setChoices(choiceImportDtoList);
+                }
+                questionImportVoList.add(questionImportVo);
+            }
+            return questionImportVoList;
+        }
+            // 如果格式不符合预期，抛出异常
+            throw new RuntimeException("ai生成题目的结果结构错误，无法进行解析！具体数据为：%s".formatted(response));
     }
 
     /**

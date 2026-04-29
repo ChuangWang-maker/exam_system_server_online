@@ -164,6 +164,7 @@ public class KimiAiServiceImpl implements KimiAiService {
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("model", kimiApiProperties.getModel());
                 requestBody.put("temperature", kimiApiProperties.getTemperature());
+                requestBody.put("max_tokens", kimiApiProperties.getMaxTokens());//模型生成的最大token数
 
                 // 构建消息列表
                 List<Map<String, Object>> messages = new ArrayList<>();

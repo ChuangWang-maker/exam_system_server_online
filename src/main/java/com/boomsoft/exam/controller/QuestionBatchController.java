@@ -96,7 +96,7 @@ public class QuestionBatchController {
     @PostMapping("/ai-generate")  // 处理POST请求
     @Operation(summary = "AI智能生成题目", description = "使用AI技术根据指定主题和要求智能生成题目，支持预览后再决定是否导入")  // API描述
     public Result<List<QuestionImportVo>> generateQuestionsByAi(
-            @RequestBody @Validated AiGenerateRequestVo request) {
+            @RequestBody @Validated AiGenerateRequestVo request) throws InterruptedException {
         List<QuestionImportVo> questionImportVoList =
                 questionService.aiGenerateQuestions(request);
         log.info("使用ai生成题目调用完毕，需要生成题目的标题为：{}，希望生成题目数量为：{}，最终生成题目数量为：{}",

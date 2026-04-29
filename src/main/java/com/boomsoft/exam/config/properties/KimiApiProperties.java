@@ -13,4 +13,5 @@ public class KimiApiProperties {
     private String apiKey;
     private String model;
     private Double temperature; // 温度是double类型
+    private Integer maxTokens;// 最大生成字数
 }
