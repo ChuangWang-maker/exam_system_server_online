@@ -3,6 +3,7 @@ package com.boomsoft.exam.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.boomsoft.exam.entity.Question;
+import com.boomsoft.exam.vo.AiGenerateRequestVo;
 import com.boomsoft.exam.vo.QuestionImportVo;
 import com.boomsoft.exam.vo.QuestionQueryVo;
 import org.springframework.web.multipart.MultipartFile;
@@ -96,4 +97,11 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     String importQuestions(List<QuestionImportVo> questions);
+
+    /**
+     * 使用AI生成题目（预览，不入库）
+     * @param request
+     * @return
+     */
+    List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request);
 }

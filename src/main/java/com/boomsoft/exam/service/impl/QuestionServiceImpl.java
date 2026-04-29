@@ -13,9 +13,11 @@ import com.boomsoft.exam.mapper.PaperQuestionMapper;
 import com.boomsoft.exam.mapper.QuestionAnswerMapper;
 import com.boomsoft.exam.mapper.QuestionChoiceMapper;
 import com.boomsoft.exam.mapper.QuestionMapper;
+import com.boomsoft.exam.service.KimiAiService;
 import com.boomsoft.exam.service.QuestionService;
 import com.boomsoft.exam.utils.ExcelUtil;
 import com.boomsoft.exam.utils.RedisUtils;
+import com.boomsoft.exam.vo.AiGenerateRequestVo;
 import com.boomsoft.exam.vo.QuestionImportVo;
 import com.boomsoft.exam.vo.QuestionQueryVo;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +54,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Autowired
     private RedisUtils redisUtils;
+
+    @Autowired
+    private KimiAiService kimiAiService;
 
 
     /**
@@ -348,6 +353,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         //4.拼接我们反馈的结构：题目批量导入接口调用结束，共计导入x条，数据一共x条！！
         String result = "题目批量导入接口调用结束，共计导入" + successNumber + "条数据，数据一共" + questions.size() + "条！";
         return result;
+    }
+
+    @Override
+    public List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request) {
+        return List.of();
     }
 
     /**

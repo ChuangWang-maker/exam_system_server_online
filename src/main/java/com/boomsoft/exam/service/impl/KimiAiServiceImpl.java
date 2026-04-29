@@ -3,20 +3,22 @@ package com.boomsoft.exam.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.boomsoft.exam.config.properties.KimiApiProperties;
 import com.boomsoft.exam.service.KimiAiService;
 import com.boomsoft.exam.vo.AiGenerateRequestVo;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.A;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Kimi AI服务实现类
@@ -25,6 +27,11 @@ import java.util.List;
 @Slf4j
 @Service
 public class KimiAiServiceImpl implements KimiAiService {
+
+    @Autowired
+    private WebClient webClient;
+    @Autowired
+    private KimiApiProperties kimiApiProperties;
 
     /**
      * 构建发送给AI的提示词
@@ -126,6 +133,105 @@ public class KimiAiServiceImpl implements KimiAiService {
         }
 
         return prompt.toString();
+    }
+
+    /**
+     * 进行kimi调用的时候，失败了有3次机会！3次都失败了，彻底失败了！
+     *
+     *    调用成功
+     *
+     *    调用失败
+     *
+     *    1. 限速问题 / api key 没有钱了 【整个网络没有问题】
+     *    2. 请求数据结构问题 整个网络没有问题
+     *    3. 反馈的结果格式不对，没有结果 整个网络没有问题
+     *    4. 真的是网络有问题
+     *服务降级部分成功（批量插入题目）+失敗了重试=for+try
+     * 封装请求kimi模型的方法
+     * @param prompt 提示词
+     * @return 模型反馈的结果
+     */
+    @Override
+    public String callKimiAI(String prompt) throws InterruptedException {
+
+        //1. 构建重试代码结构
+        int maxTry = 3; //最多三次
+
+        for (int i = 1; i <= maxTry ; i++) {
+            try {
+                //2.webClient进行kimi调用
+                // 1. 构建请求体参数
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("model", kimiApiProperties.getModel());
+                requestBody.put("temperature", kimiApiProperties.getTemperature());
+
+                // 构建消息列表
+                List<Map<String, Object>> messages = new ArrayList<>();
+
+                // 添加 System Message
+                Map<String, Object> systemMessage = new HashMap<>();
+
+
+                // 添加 User Message
+                Map<String, Object> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                userMessage.put("content", prompt);
+                messages.add(userMessage);
+
+                // 将消息列表放入请求体
+                requestBody.put("messages", messages);
+
+
+                // 2. 利用webClient发起网络请求并且获取结果即可
+                String response = webClient
+                        .post() // 确定网络请求方式
+                        .bodyValue(requestBody) // 请求体的内容，会转化成json
+                        .retrieve() // 请求准备好了可以发送了!
+                        .bodyToMono(String.class) // 返回结果类型是字符串
+                        /*
+                        // 图片中注释掉的异步写法：
+                        .subscribe(p -> {
+                            System.out.println(p);
+                        }) // 异步 继续向下执行，等有反馈结果了再回调方法
+                        */
+                        .block(); // 同步获取结果 发起网络请求，获取结果之前，代码需要阻塞
+                //3. 结果进行解析和处理（成功| 失败）
+                JSONObject resultObject = JSONObject.parseObject(response);
+                if (resultObject.containsKey("error")){
+                    //失败 【限速，参数，key没有钱了】
+                    /*
+                        {
+                            "error": {
+                                "type": "content_filter",
+                                "message": "The request was rejected because it was considered high risk"
+                            }
+                        }
+                    */
+                    //证明这一次请求就失败了
+                    //抛出异常 ->  catch -> 统一进行失败次数检查和是否尝试的处理
+                    String errorMessage = resultObject.getJSONObject("error").getString("message");
+                    throw new Exception(errorMessage);
+                }
+                String content = resultObject.getJSONArray("choices")
+                        .getJSONObject(0).getJSONObject("message").getString("content");
+                if (ObjectUtils.isEmpty(content)){
+                    throw new Exception("返回结果结构正确，但是返回数据为空！再次尝试！");
+                }
+                return content;
+            }catch (Exception e){
+                //失败
+                //1. 第几次重试失败了
+                log.error("第{}次尝试调用kimi模型失败了！失败的错误信息为：{}!", i,e.getMessage());
+                //0. i == maxTry 最后一次重试机会了，抛出异常即可
+                if (i == maxTry){
+                    throw new RuntimeException("已经重试了%s次调用kimi的模型，但是依然没有正确的返回结果！".formatted(maxTry));
+                }
+                //2. 建议线程休眠1秒（限速）
+                Thread.sleep(1000);
+            }
+        }
+        //循环中，没有正确的结果返回，都是失败！
+        throw new RuntimeException("已经重试了%s次调用kimi的模型，但是依然没有正确的返回结果！".formatted(maxTry));
     }
 
 } 

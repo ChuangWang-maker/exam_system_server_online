@@ -11,4 +11,11 @@ public interface KimiAiService {
 
     String buildPrompt(AiGenerateRequestVo request);
 
+    /**
+     * 封装请求kimi模型的方法
+     * @param prompt 提示词
+     * @return 模型反馈的结果
+     */
+    String callKimiAI(String prompt) throws InterruptedException;
+
 } 
