@@ -23,4 +23,12 @@ public interface PaperService extends IService<Paper> {
      * @return
      */
     Paper aiCreatePaper(AiPaperVo aiPaperVo);
+
+    /**
+     * 修改试卷
+     * @param id
+     * @param paperVo
+     * @return
+     */
+    Paper updatePaper(Integer id, PaperVo paperVo);
 }

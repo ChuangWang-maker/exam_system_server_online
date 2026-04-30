@@ -158,4 +158,56 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
         // 7. 返回试卷结构即可
         return paper;
     }
+
+    /**
+     * 修改试卷信息
+     * @param id 试卷id
+     * @param paperVo 试卷信息
+     * @return 修改后的试卷信息
+     */
+    @Override
+    @Transactional
+    public Paper updatePaper(Integer id, PaperVo paperVo) {
+        Paper paper = getById(id);
+        //校验：
+        //1. 发布状态的试卷不应该更新
+        if ("PUBLISHED".equals(paper.getStatus())){
+            throw  new RuntimeException("当前试卷：%s 处于发布状态，无法更新！".formatted(id));
+        }
+        //2. 更新后的试卷名字不要重复
+        LambdaQueryWrapper<Paper> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ne(Paper::getId,id);
+        queryWrapper.eq(Paper::getName,paperVo.getName());
+        long count = count(queryWrapper);
+        if (count > 0){
+            throw new RuntimeException("更新后的试卷名称：%s 与其他的试卷名称相同，更新失败！".formatted( paperVo.getName()));
+        }
+
+        //新的属性赋值给覆盖原来的属性进行更新
+        BeanUtils.copyProperties(paperVo,paper);
+
+        //总题目数量
+        //总分数
+        paper.setQuestionCount(paperVo.getQuestions().size());
+        //总分数 map -》value -> value进行累加 （BigDecimal.add(xxx)）
+        Optional<BigDecimal> totalScore = paperVo.getQuestions().values().stream().reduce(BigDecimal::add);
+        paper.setTotalScore(totalScore.get());
+        //试卷表对一的关系，我们可以直接更新即可
+        updateById(paper);
+
+
+        //更新涉及到试卷表和试卷题目中间表
+        //试卷题目中间表对多的关系：先删除原有题目，再插入新的题目即可
+        //先删除
+        LambdaQueryWrapper<PaperQuestion> paperQuestionLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        paperQuestionLambdaQueryWrapper.eq(PaperQuestion::getPaperId,id);
+        paperQuestionService.remove(paperQuestionLambdaQueryWrapper);
+        //再插入
+        List<PaperQuestion> paperQuestionList = paperVo.getQuestions().entrySet().stream()
+                .map(entry -> new PaperQuestion(paper.getId().intValue(), Long.valueOf(entry.getKey()), entry.getValue()))
+                .collect(Collectors.toList());
+        paperQuestionService.saveBatch(paperQuestionList);
+        return paper;
+
+    }
 }
