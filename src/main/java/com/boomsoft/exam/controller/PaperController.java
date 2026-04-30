@@ -3,6 +3,7 @@ package com.boomsoft.exam.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.boomsoft.exam.common.Result;
 import com.boomsoft.exam.entity.Paper;
 import com.boomsoft.exam.service.PaperService;
@@ -116,7 +117,12 @@ public class PaperController {
     public Result<Void> updatePaperStatus(
             @Parameter(description = "试卷ID") @PathVariable Integer id, 
             @Parameter(description = "新的状态，可选值：PUBLISHED/STOPPED") @RequestParam String status) {
-        return Result.success(null, "状态更新成功");
+        LambdaUpdateWrapper<Paper> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Paper::getId, id);
+        updateWrapper.set(Paper::getStatus,status);
+        paperService.update(updateWrapper);
+        log.info("修改试卷状态接口调用结束，已经将：id={}状态值改为：{}",id,status);
+        return Result.success( null, "状态更新成功");
     }
 
     /**
@@ -127,8 +133,9 @@ public class PaperController {
     @DeleteMapping("/{id}")  // 处理DELETE请求
     @Operation(summary = "删除试卷", description = "删除指定的试卷，注意：已发布的试卷不能删除")  // API描述
     public Result<Void> deletePaper(@Parameter(description = "试卷ID") @PathVariable Integer id) {
-        // 检查试卷是否存在  // 验证试卷存在性
-
-        return Result.error("试卷删除失败");
+        // 检查试卷是否存在 // 验证试卷存在性
+        paperService.removePaper(id);
+        log.info("调用删除id={}的试卷接口完成！",id);
+        return Result.success(null, "试卷删除成功");
     }
 } 

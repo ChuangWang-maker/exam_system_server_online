@@ -4,9 +4,11 @@ package com.boomsoft.exam.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.boomsoft.exam.entity.ExamRecord;
 import com.boomsoft.exam.entity.Paper;
 import com.boomsoft.exam.entity.PaperQuestion;
 import com.boomsoft.exam.entity.Question;
+import com.boomsoft.exam.mapper.ExamRecordMapper;
 import com.boomsoft.exam.mapper.PaperMapper;
 import com.boomsoft.exam.mapper.QuestionMapper;
 import com.boomsoft.exam.service.PaperQuestionService;
@@ -41,6 +43,9 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
 
     @Autowired
     private QuestionMapper questionMapper;
+
+    @Autowired
+    private ExamRecordMapper examRecordMapper;
 
     /**
      * 创建试卷
@@ -209,5 +214,31 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
         paperQuestionService.saveBatch(paperQuestionList);
         return paper;
 
+    }
+
+    @Override
+    public void removePaper(Integer id) {
+        //前置删除校验：
+        Paper paper = getById(id);
+        //自身如果是发布状态不能删除！-》发布状态就有可能被人答卷！
+        if ("PUBLISHED".equals(paper.getStatus())){
+            throw new RuntimeException("id = %s 试卷处于发状态，不能直接删除，可以先修改为草稿状态！".formatted(id));
+        }
+        //检查考试中是否有引用我们的试卷，有，我们也不能删除！
+        LambdaQueryWrapper<ExamRecord> examRecordLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        examRecordLambdaQueryWrapper.eq(ExamRecord::getExamId,id);
+        Long count = examRecordMapper.selectCount(examRecordLambdaQueryWrapper);
+        if (count > 0){
+            throw new RuntimeException("id = %s 试卷关联了 %s 条考试记录，无法直接删除！".formatted(id,count));
+        }
+
+        //删除自身
+        removeById(id);
+
+        //删除子数
+        //删除试卷和题目的中间表
+        LambdaQueryWrapper<PaperQuestion> paperQuestionLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        paperQuestionLambdaQueryWrapper.eq(PaperQuestion::getPaperId,id);
+        paperQuestionService.remove(paperQuestionLambdaQueryWrapper);
     }
 }
