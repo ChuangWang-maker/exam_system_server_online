@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -61,7 +62,8 @@ public class PaperController {
     @PostMapping  // 处理POST请求
     @Operation(summary = "手动创建试卷", description = "通过手动选择题目的方式创建试卷")  // API描述
     public Result<Paper> createPaper(@RequestBody PaperVo paperVo) {
-
+        Paper paper = paperService.createPaper(paperVo);
+        log.info("手动组卷成功，组成对象信息为：{}", paper);
         return Result.success(null, "试卷创建成功");
     }
 
@@ -87,7 +89,9 @@ public class PaperController {
     @PostMapping("/ai")  // 处理POST请求
     @Operation(summary = "AI智能组卷", description = "基于设定的规则（题型分布、难度配比等）使用AI自动生成试卷")  // API描述
     public Result<Paper> createPaperWithAI(@RequestBody AiPaperVo aiPaperVo) {
-        return Result.success(null, "AI智能组卷成功");
+        Paper paper = paperService.aiCreatePaper(aiPaperVo);
+        log.info("智能组卷接口调用完毕，组卷信息为: {}",paper);
+        return Result.success(paper, "AI智能组卷成功");
     }
 
     /**
