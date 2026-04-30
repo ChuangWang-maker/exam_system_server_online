@@ -1,26 +1,39 @@
 package com.boomsoft.exam.controller;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.boomsoft.exam.common.Result;
 import com.boomsoft.exam.entity.Paper;
+import com.boomsoft.exam.service.PaperService;
 import com.boomsoft.exam.vo.AiPaperVo;
 import com.boomsoft.exam.vo.PaperVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 试卷控制器 - 处理试卷管理相关的HTTP请求
  * 包括试卷的CRUD操作、AI智能组卷、状态管理等功能
  */
+@CrossOrigin
+@Slf4j
 @RestController  // REST控制器，返回JSON数据
 @RequestMapping("/api/papers")  // 试卷API路径前缀
 @Tag(name = "试卷管理", description = "试卷相关操作，包括创建、查询、更新、删除，以及AI智能组卷功能")  // Swagger API分组
 public class PaperController {
+
+    @Autowired
+    private PaperService paperService;
 
 
 
@@ -32,8 +45,16 @@ public class PaperController {
     public Result<java.util.List<Paper>> listPapers(
             @Parameter(description = "试卷名称，支持模糊查询") @RequestParam(required = false) String name,
             @Parameter(description = "试卷状态，可选值：DRAFT/PUBLISHED/STOPPED") @RequestParam(required = false) String status) {
-
-        return Result.success(null);
+        //创建一个LambdaQueryWrapper
+        LambdaQueryWrapper<Paper> queryWrapper = new LambdaQueryWrapper<>();
+        //判断动态条件并且封装到wrapper (condition)
+        queryWrapper.like(!ObjectUtils.isEmpty(name), Paper::getName, name);
+        queryWrapper.eq(!ObjectUtils.isEmpty(status), Paper::getStatus, status);
+        //调用业务层的通用方法 list()
+        List<Paper> paperList = paperService.list(queryWrapper);
+        log.info("查询试卷接口调用结束，查询数据为{}", paperList);
+        //将结果装到result中即可!
+        return Result.success(paperList);
     }
 
     /**
@@ -42,7 +63,8 @@ public class PaperController {
     @PostMapping  // 处理POST请求
     @Operation(summary = "手动创建试卷", description = "通过手动选择题目的方式创建试卷")  // API描述
     public Result<Paper> createPaper(@RequestBody PaperVo paperVo) {
-
+        Paper paper = paperService.createPaper(paperVo);
+        log.info("手动组卷成功，组成对象信息为：{}", paper);
         return Result.success(null, "试卷创建成功");
     }
 
@@ -57,7 +79,9 @@ public class PaperController {
     public Result<Paper> updatePaper(
             @Parameter(description = "试卷ID") @PathVariable Integer id, 
             @RequestBody PaperVo paperVo) {
-        return Result.success(null, "试卷更新成功");
+        Paper paper = paperService.updatePaper(id,paperVo);
+        log.info("更新试卷接口执行完毕，更新后的信息为: {}",paper);
+        return Result.success(paper, "试卷更新成功");
     }
 
     /**
@@ -68,7 +92,9 @@ public class PaperController {
     @PostMapping("/ai")  // 处理POST请求
     @Operation(summary = "AI智能组卷", description = "基于设定的规则（题型分布、难度配比等）使用AI自动生成试卷")  // API描述
     public Result<Paper> createPaperWithAI(@RequestBody AiPaperVo aiPaperVo) {
-        return Result.success(null, "AI智能组卷成功");
+        Paper paper = paperService.aiCreatePaper(aiPaperVo);
+        log.info("智能组卷接口调用完毕，组卷信息为: {}",paper);
+        return Result.success(paper, "AI智能组卷成功");
     }
 
     /**
@@ -77,7 +103,9 @@ public class PaperController {
     @GetMapping("/{id}")  // 处理GET请求
     @Operation(summary = "获取试卷详情", description = "获取试卷的详细信息，包括试卷基本信息和包含的所有题目")  // API描述
     public Result<Paper> getPaperById(@Parameter(description = "试卷ID") @PathVariable Integer id) {
-        return Result.success(null);
+        Paper paper = paperService.getPaperById(id);
+        log.info("查询试卷详情接口调用结束！ 查询试卷对象详情为：{}",paper);
+        return Result.success(paper);
     }
 
     /**
@@ -91,7 +119,12 @@ public class PaperController {
     public Result<Void> updatePaperStatus(
             @Parameter(description = "试卷ID") @PathVariable Integer id, 
             @Parameter(description = "新的状态，可选值：PUBLISHED/STOPPED") @RequestParam String status) {
-        return Result.success(null, "状态更新成功");
+        LambdaUpdateWrapper<Paper> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Paper::getId, id);
+        updateWrapper.set(Paper::getStatus,status);
+        paperService.update(updateWrapper);
+        log.info("修改试卷状态接口调用结束，已经将：id={}状态值改为：{}",id,status);
+        return Result.success( null, "状态更新成功");
     }
 
     /**
@@ -102,8 +135,9 @@ public class PaperController {
     @DeleteMapping("/{id}")  // 处理DELETE请求
     @Operation(summary = "删除试卷", description = "删除指定的试卷，注意：已发布的试卷不能删除")  // API描述
     public Result<Void> deletePaper(@Parameter(description = "试卷ID") @PathVariable Integer id) {
-        // 检查试卷是否存在  // 验证试卷存在性
-
-        return Result.error("试卷删除失败");
+        // 检查试卷是否存在 // 验证试卷存在性
+        paperService.removePaper(id);
+        log.info("调用删除id={}的试卷接口完成！",id);
+        return Result.success(null, "试卷删除成功");
     }
 } 
