@@ -241,4 +241,38 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
         paperQuestionLambdaQueryWrapper.eq(PaperQuestion::getPaperId,id);
         paperQuestionService.remove(paperQuestionLambdaQueryWrapper);
     }
+
+    /**
+     * 根据id查询试卷详细信息
+     * @param id 试卷id
+     * @return 试卷信息
+     */
+    @Override
+    public Paper getPaperById(Integer id) {
+        //1. 查询试卷对象，根据id
+        Paper paper = getById(id);
+        //2. 在questionMapper定义一个多表查询方法，根据试卷id-》对应的题目集合
+        List<Question> questionList = questionMapper.selectQuestionByPaperId(id);
+        //校验：试卷对应的题目是否为空
+        if (ObjectUtils.isEmpty(questionList)){
+            log.warn("试卷中没有题目，试卷不能用于考试！可以用于后续修改！");
+            return paper;
+        }
+        //3. 对题目集合进行排序处理（选择题 -》 判断题 -》 简答题）
+        //根据question Type 类型排序！ CHOICE -> 0 JUDGE -> 1 TEXT -> 2
+        questionList.sort((q1, q2) -> Integer.compare(typeToInt(q1.getType()),typeToInt(q2.getType())));
+        //4. 题目集合赋予试卷对象
+        paper.setQuestions(questionList);
+        //5. 返回完整试卷对象即可
+        return paper;
+    }
+
+    private int typeToInt(String type){
+            switch (type){
+                case "CHOICE": return 1;
+                case "JUDGE": return 2;
+                case "TEXT": return 3;
+                default:return 4;
+            }
+    }
 }

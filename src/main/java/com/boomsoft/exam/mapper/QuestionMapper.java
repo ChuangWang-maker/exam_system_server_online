@@ -29,4 +29,6 @@ public interface QuestionMapper extends BaseMapper<Question> {
     //方法规则：返回值必须是IPaeg方法名（第一个参数必须是IPage【分页数据第几页，每页显示几条】，其他数据）
     IPage<Question> selectQuestionPage(IPage<Question> page, @Param("queryVo") QuestionQueryVo questionVo);
 
+    List<Question> selectQuestionByPaperId(Integer paperId);
+
 } 
