@@ -3,4 +3,29 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.boomsoft.exam.mapper.ExamRecordMapper">
+
+    <select id="queryRank" resultType="com.boomsoft.exam.vo.ExamRankingVO">
+        select
+        ers.id,
+        ers.student_name,
+        ers.score ,
+        ers.exam_id ,
+        ppr.name paper_name,
+        ppr.total_score paper_total_score,
+        ers.start_time,
+        ers.end_time,
+        TIMESTAMPDIFF(MINUTE, ers.start_time, ers.end_time) duration
+        from exam_records ers
+        join paper ppr on ers.exam_id = ppr.id
+        where ers.`status` = '已批阅' and ers.is_deleted = 0
+        and ppr.is_deleted = 0
+        <if test="paperId != null">
+            and  ppr.id = #{paperId}
+        </if>
+        order by ers.score desc , duration asc
+        <if test="limit != null and limit > 0">
+            limit #{limit};
+        </if>
+    </select>
+
 </mapper>
